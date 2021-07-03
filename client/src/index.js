@@ -194,7 +194,8 @@ function Room(props) {
 
   function handleSelect(e) {
     // setSelect(e.target.value);
-    let u = `http://10.0.0.113:5000/${e.target.value}/1.jpg`;
+    // let u = `http://10.0.0.113:5000/${e.target.value}/1.jpg`; DEV
+    let u = `/${select}/1.jpg`;
     socket.emit('change', {roomName, nickName, imageUrl: u, map: e.target.value, nFloor: 1});
   }
 

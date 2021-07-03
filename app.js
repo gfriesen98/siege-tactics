@@ -89,6 +89,15 @@ io.on('connection', (socket) => {
     if (states.length < 1) {
       states.push(newState);
     } else {
+      /**
+       * ISSUE: We do not properly compare incoming newState.
+       * 
+       * If there is more than one room, we do not properly
+       * compare against the existing array. If newState belongs 
+       * to a new room then the state should default to the default
+       * states in the client, but it doesn't. It will display the last
+       * selected state (which is sent from client).
+       */
       for (let i = 0 ; i < states.length ; i++) {
         if (states[i] != newState) {
           newState = states[i];
@@ -150,13 +159,10 @@ io.on('connection', (socket) => {
       }
     }
 
-    // !!!!! BANDAID FIX !!!!!
-    if (curr.imageUrl === undefined) {
-      curr = newState;
-    }
-    
     // console.log('STATES CHANGED TO',states);
-    io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
+    // io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
+    io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: .imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
+
     clearLines(roomName);
   });
 
