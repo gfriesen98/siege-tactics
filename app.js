@@ -137,10 +137,14 @@ io.on('connection', (socket) => {
       floor: nFloor
     }
 
-    console.log('(CHANGE) NEW STATE:', newState);
+    // console.log('MAP', newState);
+    console.log('INCOMING STATE: ', newState);
+    // console.log('(CHANGE) NEW STATE:', newState);
     for (let i = 0; i < states.length; i++) {
       if (states[i].roomName === roomName) {
+        console.log('OLD STATE: ',states[i])
         states[i] = newState;
+        console.log('NEW STATE: ',states[i])
         var curr = states[i];
         break;
       }
@@ -151,7 +155,7 @@ io.on('connection', (socket) => {
       curr = newState;
     }
     
-    console.log('STATES CHANGED TO',states);
+    // console.log('STATES CHANGED TO',states);
     io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
     clearLines(roomName);
   });
