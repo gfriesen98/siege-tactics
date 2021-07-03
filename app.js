@@ -161,7 +161,7 @@ io.on('connection', (socket) => {
 
     // console.log('STATES CHANGED TO',states);
     // io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
-    io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: .imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
+    io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
 
     clearLines(roomName);
   });
