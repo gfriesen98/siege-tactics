@@ -49,8 +49,8 @@ function Room(props) {
   const [clients, setClients] = useState([]);
   const [select, setSelect] = useState('consulate');
   const [floor, setFloor] = useState(1);
-  // const [url, setUrl] = useState(`/consulate/1.jpg`); PRODUCTION
-  const [url, setUrl] = useState(`http://10.0.0.113:5000/consulate/1.jpg`);
+  const [url, setUrl] = useState(`/consulate/1.jpg`);
+  // const [url, setUrl] = useState(`http://10.0.0.113:5000/consulate/1.jpg`);
   const [pos, setPos] = useState({ x: 0, y: 0, scale: 1});
 
   useEffect(() => {
@@ -179,16 +179,16 @@ function Room(props) {
   function handleUp() {
     let temp = floor;
     temp++;
-    // let u = `/${select}/${temp}.jpg`; PRODUCTION
-    let u = `http://10.0.0.113:5000/${select}/${temp}.jpg`; //DEV
+    let u = `/${select}/${temp}.jpg`; 
+    // let u = `http://10.0.0.113:5000/${select}/${temp}.jpg`; //DEV
     socket.emit('change', {roomName, nickName, imageUrl: u, map: select, nFloor: temp});
   }
 
   function handleDown() {
     let temp = floor;
     temp--;
-    // let u = `/${select}/${temp}.jpg`; PRODUCTION
-    let u = `http://10.0.0.113:5000/${select}/${temp}.jpg`; //DEV
+    let u = `/${select}/${temp}.jpg`; 
+    // let u = `http://10.0.0.113:5000/${select}/${temp}.jpg`; //DEV
     socket.emit('change', {roomName, nickName, imageUrl: u, map: select, nFloor: temp});
   }
 

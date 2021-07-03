@@ -159,11 +159,12 @@ io.on('connection', (socket) => {
 });
 
 //!!PRODUCTION!!
-// app.use(express.static(path.join(__dirname, '/client/build')));
+//!!Comment out for development!!
+app.use(express.static(path.join(__dirname, '/client/build')));
 
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname+'/client/build/index.html'));
-// })
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname+'/client/build/index.html'));
+})
 
 server.listen(process.env.PORT || 5000, () => {
   console.log('server running on port 5000');
