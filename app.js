@@ -5,6 +5,7 @@ app.use(express.static('public'));
 const http = require('http');
 const server = http.createServer(app);
 const {Server} = require('socket.io');
+const { clearLine } = require('readline');
 const io = new Server(server);
 var users = {};
 var lineHistory = [];
@@ -63,60 +64,10 @@ function registerUser(nickname, roomName, socketID) {
   return users[nickname];
 }
 
-function clearRoom(roomName) {
+function clearLines(roomName) {
   for (let i = 0; i < lineHistory.length; i++) {
     if (lineHistory[i].roomName === roomName) {
-      delete lineHistory[i];
-    }
-  }
-}
-
-function updateImagesRooms(roomName, imageUrl, select, floor) {
-  let temp = {
-    roomName: roomName,
-    imageUrl: imageUrl,
-    map: select,
-    floor: floor
-  }
-  if (states.length === 0) {
-    states.push(temp);
-    return states[0];
-  } else {
-    for (let i = 0; i < states.length; i++) {
-      if (states[i].roomName === roomName) {
-        states[i].imageUrl = imageUrl;
-        states[i].map = select;
-        states[i].floor = floor;
-        return states[i];
-      }
-    }
-  }
-}
-
-function getImageUrlFromRoom(roomName) {
-  for (let i = 0; i < states.length; i++) {
-    if (states[i].roomName === roomName) {
-      return states[i].imageUrl;
-    }
-  }
-}
-
-function compareOnJoin(roomName, imageUrl) {
-  for (let i = 0; i < states.length; i++) {
-    if (states[i].roomName === roomName) {
-      if (states[i].imageUrl !== imageUrl) {
-        return states[i].imageUrl;
-      } else {
-        return imageUrl;
-      }
-    }
-  }
-}
-
-function getCurrentState(roomName) {
-  for (let i = 0; i < states.length; i++) {
-    if (states[i].roomName === roomName) {
-      return states[i];
+      lineHistory[i].deleted = true;
     }
   }
 }
@@ -153,11 +104,13 @@ io.on('connection', (socket) => {
     socket.emit('joined', {joined: true, roomName: roomName, nickName: nickName, connectedClients: getUsersInRoom(roomName)});
     // console.log(lineHistory);
     for (let i = 0 ; i < lineHistory.length ; i++) {
-      let line = lineHistory[i].line;
-      let room = lineHistory[i].roomName;
-      console.log('LINE', line);
-      console.log('ROOM', room);
-      io.to(room).emit('room_draw', line);
+      if (lineHistory.deleted !== undefined) {
+        let line = lineHistory[i].line;
+        let room = lineHistory[i].roomName;
+        console.log('LINE', line);
+        console.log('ROOM', room);
+        io.to(room).emit('room_draw', line);
+      }
     }
     io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: newState.imageUrl, map: newState.map, nFloor: newState.floor, clear: false});
     io.to(roomName).emit('update', {users: getUsersInRoom(roomName)});
@@ -192,17 +145,25 @@ io.on('connection', (socket) => {
         break;
       }
     }
+
+    // !!!!! BANDAID FIX !!!!!
+    if (curr.imageUrl === undefined) {
+      curr = newState;
+    }
+    
     console.log('STATES CHANGED TO',states);
     io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
+    clearLines(roomName);
   });
 
 });
 
-app.use(express.static(path.join(__dirname, '/client/build')));
+//!!PRODUCTION!!
+// app.use(express.static(path.join(__dirname, '/client/build')));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname+'/client/build/index.html'));
-})
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname+'/client/build/index.html'));
+// })
 
 server.listen(process.env.PORT || 5000, () => {
   console.log('server running on port 5000');
