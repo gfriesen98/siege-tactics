@@ -109,10 +109,7 @@ io.on('connection', (socket) => {
        */
       for (let i = 0 ; i < states.length ; i++) {
         if (states[i].roomName != newState.roomName) {
-          // newState = states[i];
-          states.push(newState);
-          break;
-        } else {
+          // states.push(newState);
           newState = states[i];
           break;
         }
