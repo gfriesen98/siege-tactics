@@ -87,8 +87,10 @@ io.on('connection', (socket) => {
     }
 
     if (states.length < 1) {
+      console.log('FIRST ROOM STATE: ', newState);
       states.push(newState);
     } else {
+      console.log('NEW ROOM STATE: ', newState);
       /**
        * ISSUE: We do not properly compare incoming newState.
        * 
@@ -99,7 +101,11 @@ io.on('connection', (socket) => {
        * selected state (which is sent from client).
        */
       for (let i = 0 ; i < states.length ; i++) {
-        if (states[i] != newState) {
+        if (states[i].roomName != newState.roomName) {
+          // newState = states[i];
+          states.push(newState);
+          break;
+        } else {
           newState = states[i];
           break;
         }
@@ -132,7 +138,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('draw_line', ({roomName, line}) => {
-    console.log('line', line);
+    // console.log('line', line);
     lineHistory.push({line: line, roomName: roomName});
     io.to(roomName).emit('room_draw', line);
   });

@@ -14,4 +14,4 @@ clone this repo, make sure `concurrently` is installed (`npm install --global co
 
 sockets are hosted via express in `app.js`
 
-changes to the client can be made in the `/client` folder
+changes to the React client can be made in the `/client` folder 

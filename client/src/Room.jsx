@@ -1,14 +1,20 @@
-import React, { createRef, useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import {BrowserRouter as Router, Switch, Route, useParams} from 'react-router-dom';
-import {SocketContext, socket} from './SocketContext';
+import { useParams } from 'react-router-dom';
+import { SocketContext, socket } from './SocketContext';
 
 export default function Room(props) {
   const {id} = useParams();
+  const [roomName, setRoom] = useState(id);
+  const [nickName, setNickname] = useState(props.location.state.nickName);
+  const [clients, setClients] = useState([]);
+  const [select, setSelect] = useState('consulate'); //default to consulate for now
+  const [floor, setFloor] = useState(1);
+  const [url, setUrl] = useState(`/consulate/1.jpg`);
+
   const socket = useContext(SocketContext);
-  const canvasRef = useRef(null);
-  const ref = useRef(null);
-  const mouse = {
+  const canvasRef = useRef(null); //Will be set to <canvas/> when it loads
+  const mouse = { //set up mouse coords
     click: false,
     move: false,
     pos: {
@@ -17,18 +23,25 @@ export default function Room(props) {
     },
     pos_prev: false
   };
-  var originx = 0;
-  var originy = 0;
-  var scale = 1;
-  const [roomName, setRoom] = useState(id);
-  const [nickName, setNickname] = useState(props.location.state.nickName);
-  const [clients, setClients] = useState([]);
-  const [select, setSelect] = useState('consulate');
-  const [floor, setFloor] = useState(1);
-  const [url, setUrl] = useState(`/consulate/1.jpg`);
-  // const [url, setUrl] = useState(`http://10.0.0.113:5000/consulate/1.jpg`);
-  const [pos, setPos] = useState({ x: 0, y: 0, scale: 1});
 
+  /**
+   * When we change states that come from the backend socket, dont change the
+   * state early, like in onEvent functions, but rather on a socket event. 
+   * This keeps states between clients in sync.
+   * 
+   * Examples seen in the handleSelect function. We dont immediately set the
+   * state in that function, but instead wait for a response from the socket,
+   * then change the state!
+   */
+
+  /**
+   * Set some misc. socket events on component load.
+   * 
+   * update: listens for when new users join to set list of connected clients
+   * join: emit an event on component load to notify server that a client has joined
+   * joined: updates user list mid session when another user joins
+   * set_image: watches for when a user changes the map, then redraw the map
+   */
   useEffect(() => {
     socket.on('update', ({users}) => {
       setClients(users);
@@ -43,7 +56,6 @@ export default function Room(props) {
       socket.on('set_image', ({roomName, nickName, imageUrl, map, nFloor, clear}) => {
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
-        // context.clearRect(0,0,1600,900);
         if (clear) {
           context.clearRect(0,0,1600,900);
           setUrl(imageUrl);
@@ -58,14 +70,16 @@ export default function Room(props) {
     }
   }, []);
 
-  /** !!loads drawings on join!! */
+  /**
+   * On component load set a room_draw listener to draw lines
+   * on client load from the socket server
+   */
   useEffect(() => {
     if (canvasRef.current) {
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       socket.on('room_draw', (res) => {
         const line = res;
-        // var context = canvasRef.current.getContext('2d');
         context.strokeStyle = 'red';
         context.lineWidth = 2;
         context.beginPath();
@@ -76,12 +90,10 @@ export default function Room(props) {
     }
   }, []);
 
-  function handleClick() {
-    let context = canvasRef.current.getContext("2d");
-    context.fillStyle = 'blue';
-    context.fillRect(100,100,32,32);
-  }
-
+  /**
+   * Sets client mouse coordinates on mouse down
+   * @param {event} e event
+   */
   function onMouseDown(e) {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -90,10 +102,18 @@ export default function Room(props) {
     mouse.click = true;
   }
 
+  /**
+   * Determines if the user is not clicking
+   * @param {event} e event
+   */
   function onMouseUp(e) {
     mouse.click = false;
   }
 
+  /**
+   * Sets the client mouse position on mouse move
+   * @param {event} e event
+   */
   function onMouseMove(e) {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -102,43 +122,12 @@ export default function Room(props) {
     mouse.move = true;
   }
 
-  function onMouseScroll(e) {
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    var mousex = mouse.pos.x - canvas.offsetLeft;
-    var mousey = mouse.pos.y - canvas.offsetTop;
-    var wheel = e.nativeEvent.wheelDelta/120;
-    console.log(e);
-
-    var zoom = Math.pow(1+Math.abs(wheel)/2, wheel > 0 ? 1 : -1);
-
-    context.translate(originx, originy);
-    context.scale(zoom,zoom);
-    context.translate(
-      -( mousex / scale + originx - mousex / (scale*zoom) ),
-      -( mousey / scale + originy - mousey / (scale*zoom) )
-    );
-
-    originx = ( mousex / scale + originx - mousex / (scale*zoom) );
-    originy = ( mousey / scale + originy - mousey / (scale*zoom) );
-    scale *=zoom;
-  }
-
-  function onWheelCapture(e) {
-    const delta = e.deltaY * -0.01;
-    const newScale = pos.scale + delta;
-    const ratio = 1 - newScale / pos.scale;
-
-    setPos({
-      scale: newScale,
-      x: pos.x + (e.clientX - pos.x) * ratio,
-      y: pos.y + (e.clientY - pos.y) * ratio
-    });
-  }
-
+  /**
+   * Runs on load to check if the client is drawing or not
+   * Emits a socket event on draw line
+   */
   function mainLoop() {
     if (mouse.click && mouse.move && mouse.pos_prev) {
-      // console.log(mouse);
       socket.emit('draw_line', {roomName: roomName, line: [mouse.pos, mouse.pos_prev]});
       mouse.move = false;
     }
@@ -148,29 +137,35 @@ export default function Room(props) {
     };
     setTimeout(mainLoop, 25);
   }
-
-
   mainLoop();
 
+  /**
+   * Emits a socket event to change the map floor up
+   * TODO do not go more than the amount of floors the map has :/
+   */
   function handleUp() {
     let temp = floor;
     temp++;
-    let u = `/${select}/${temp}.jpg`; 
-    // let u = `http://10.0.0.113:5000/${select}/${temp}.jpg`; //DEV
+    let u = `/${select}/${temp}.jpg`;
     socket.emit('change', {roomName, nickName, imageUrl: u, map: select, nFloor: temp});
   }
 
+  /**
+   * Emits a socket event to change the map floor down
+   * TODO do not go less than 1
+   */
   function handleDown() {
     let temp = floor;
     temp--;
     let u = `/${select}/${temp}.jpg`; 
-    // let u = `http://10.0.0.113:5000/${select}/${temp}.jpg`; //DEV
     socket.emit('change', {roomName, nickName, imageUrl: u, map: select, nFloor: temp});
   }
 
+  /**
+   * Emits a socket event to change the map
+   * @param {event} e event
+   */
   function handleSelect(e) {
-    // setSelect(e.target.value);
-    // let u = `http://10.0.0.113:5000/${e.target.value}/1.jpg`; DEV
     let u = `/${select}/1.jpg`;
     socket.emit('change', {roomName, nickName, imageUrl: u, map: e.target.value, nFloor: 1});
   }
@@ -206,7 +201,7 @@ export default function Room(props) {
         <button onClick={handleUp}>floor up</button>
         <button onClick={handleDown}>floor down</button>
       </div>
-      <div style={{width: '100%', height: '100%'}}>
+      <div>
         <TransformWrapper panning={{disabled: true}}>
           <TransformComponent>
             <canvas style={{
