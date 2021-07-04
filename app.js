@@ -5,7 +5,6 @@ app.use(express.static('public'));
 const http = require('http');
 const server = http.createServer(app);
 const {Server} = require('socket.io');
-const { clearLine } = require('readline');
 const io = new Server(server);
 var users = {};
 var lineHistory = [];
@@ -64,6 +63,10 @@ function registerUser(nickname, roomName, socketID) {
   return users[nickname];
 }
 
+/**
+ * Deletes all drawn lines saved server side for the connected room
+ * @param {String} roomName connected room name
+ */
 function clearLines(roomName) {
   for (let i = 0; i < lineHistory.length; i++) {
     if (lineHistory[i].roomName === roomName) {
@@ -73,9 +76,13 @@ function clearLines(roomName) {
 }
 
 io.on('connection', (socket) => {
-  // socket.emit('test', new Date());
   console.log('connect')
 
+  /**
+   * Listens for user join
+   * 
+   * Adds new user to a list so we can map a nickname to the socketId
+   */
   socket.on('join', ({nickName, roomName, imageUrl, select, floor}) => {
     user = registerUser(nickName, roomName, socket.id);
 
@@ -111,13 +118,15 @@ io.on('connection', (socket) => {
         }
       }
     }
-
     console.log('STATES:', states);
-    
     socket.join(roomName);
 
+    /**
+     * Emits 'joined'
+     * 
+     * Sends connected user information to the client
+     */
     socket.emit('joined', {joined: true, roomName: roomName, nickName: nickName, connectedClients: getUsersInRoom(roomName)});
-    // console.log(lineHistory);
     for (let i = 0 ; i < lineHistory.length ; i++) {
       if (lineHistory.deleted !== undefined) {
         let line = lineHistory[i].line;
@@ -131,20 +140,34 @@ io.on('connection', (socket) => {
     io.to(roomName).emit('update', {users: getUsersInRoom(roomName)});
   });
 
+  /**
+   * Listens for socket disconnects
+   * 
+   * Removes the disconnected user from the list of users.
+   */
   socket.on('disconnect', () => {
     let t = disconnectUser(socket.id);
     io.to(t.roomName).emit('update', {users: getUsersInRoom(t.roomName)});
     console.log('disconnected user', users);
   });
 
+  /**
+   * Listens for draw_line
+   * 
+   * Saves drawn lines server side so we can send drawings to
+   * all connected clients in the room
+   */
   socket.on('draw_line', ({roomName, line}) => {
-    // console.log('line', line);
     lineHistory.push({line: line, roomName: roomName});
     io.to(roomName).emit('room_draw', line);
   });
 
+  /**
+   * Listens for map changes.
+   * 
+   * Updates server side state of the current room
+   */
   socket.on('change', ({roomName, nickName, imageUrl, map, nFloor}) => {
-    // image = updateImagesRooms(roomName, imageUrl, select, floor);
     let newState = {
       roomName: roomName,
       imageUrl: imageUrl,
@@ -152,9 +175,7 @@ io.on('connection', (socket) => {
       floor: nFloor
     }
 
-    // console.log('MAP', newState);
     console.log('INCOMING STATE: ', newState);
-    // console.log('(CHANGE) NEW STATE:', newState);
     for (let i = 0; i < states.length; i++) {
       if (states[i].roomName === roomName) {
         console.log('OLD STATE: ',states[i])
@@ -165,8 +186,6 @@ io.on('connection', (socket) => {
       }
     }
 
-    // console.log('STATES CHANGED TO',states);
-    // io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
     io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
 
     clearLines(roomName);
