@@ -28,7 +28,7 @@ var states = [];
 /**
  * Disconnects and unregisters a user
  * @param {String} socketID socket id
- * @returns Object
+ * @returns The disconnected user Object
  */
 function disconnectUser(socketID) {
   let temp = {};
@@ -71,6 +71,9 @@ function clearLines(roomName) {
   for (let i = 0; i < lineHistory.length; i++) {
     if (lineHistory[i].roomName === roomName) {
       lineHistory[i].deleted = true;
+      console.log('same: ', lineHistory[i]);
+    }else {
+      console.log('not same: ', lineHistory[i]);
     }
   }
 }
@@ -93,24 +96,24 @@ io.on('connection', (socket) => {
       floor: floor
     }
 
+    /**
+     * ISSUE: when a user joins a room that is already created it sends the default
+     * select value from the client ('consulate'). The client should wait to see if the
+     * room exists and send back the current map.
+     */
     if (states.length < 1) {
       console.log('FIRST ROOM STATE: ', newState);
       states.push(newState);
     } else {
       console.log('NEW ROOM STATE: ', newState);
-      /**
-       * ISSUE: We do not properly compare incoming newState.
-       * 
-       * If there is more than one room, we do not properly
-       * compare against the existing array. If newState belongs 
-       * to a new room then the state should default to the default
-       * states in the client, but it doesn't. It will display the last
-       * selected state (which is sent from client).
-       */
+
       for (let i = 0 ; i < states.length ; i++) {
-        if (states[i].roomName != newState.roomName) {
+        if (states[i].roomName == newState.roomName) {
           // states.push(newState);
           newState = states[i];
+          break;
+        } else {
+          states.push(newState);
           break;
         }
       }
@@ -123,18 +126,18 @@ io.on('connection', (socket) => {
      * 
      * Sends connected user information to the client
      */
-    socket.emit('joined', {joined: true, roomName: roomName, nickName: nickName, connectedClients: getUsersInRoom(roomName)});
+    socket.emit('joined', {joined: true, roomName: newState.roomName, nickName: nickName, connectedClients: getUsersInRoom(newState.nickName)});
     for (let i = 0 ; i < lineHistory.length ; i++) {
-      if (lineHistory.deleted !== undefined) {
+      if (lineHistory.deleted == false) {
         let line = lineHistory[i].line;
-        let room = lineHistory[i].roomName;
-        console.log('LINE', line);
-        console.log('ROOM', room);
-        io.to(room).emit('room_draw', line);
+        // let room = lineHistory[i].roomName; ???
+        io.to(newState.roomName).emit('room_draw', line);
       }
     }
-    io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: newState.imageUrl, map: newState.map, nFloor: newState.floor, clear: false});
-    io.to(roomName).emit('update', {users: getUsersInRoom(roomName)});
+    // io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: newState.imageUrl, map: newState.map, nFloor: newState.floor, clear: false}); ???
+    io.to(newState.roomName).emit('set_image', {roomName, nickName, imageUrl: newState.imageUrl, map: newState.map, nFloor: newState.floor, clear: false});
+    // io.to(roomName).emit('update', {users: getUsersInRoom(newState.roomName)}); ???
+    io.to(newState.roomName).emit('update', {users: getUsersInRoom(newState.roomName)});
   });
 
   /**
@@ -155,7 +158,7 @@ io.on('connection', (socket) => {
    * all connected clients in the room
    */
   socket.on('draw_line', ({roomName, line}) => {
-    lineHistory.push({line: line, roomName: roomName});
+    lineHistory.push({line: line, roomName: roomName, deleted: false});
     io.to(roomName).emit('room_draw', line);
   });
 
@@ -183,9 +186,9 @@ io.on('connection', (socket) => {
       }
     }
 
-    io.to(roomName).emit('set_image', {roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
+    io.to(roomName).emit('set_image', {roomName: curr.roomName, nickName, imageUrl: curr.imageUrl, map: curr.map, nFloor: curr.floor, clear: true});
 
-    clearLines(roomName);
+    clearLines(curr.roomName);
   });
 
 });

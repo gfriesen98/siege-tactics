@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { useParams } from 'react-router-dom';
+import Container from 'react-bootstrap/Container';
 import { SocketContext, socket } from './SocketContext';
 
 export default function Room(props) {
@@ -57,7 +58,10 @@ export default function Room(props) {
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
         if (clear) {
-          context.clearRect(0,0,1600,900);
+          context.save();
+          context.setTransform(1,0,0,1,0,0);
+          context.clearRect(0,0, context.canvas.width, context.canvas.height);
+          context.restore();
           setUrl(imageUrl);
           setFloor(nFloor);
           setSelect(map);
@@ -166,11 +170,12 @@ export default function Room(props) {
    * @param {event} e event
    */
   function handleSelect(e) {
-    let u = `/${select}/1.jpg`;
+    let u = `/${e.target.value}/1.jpg`;
     socket.emit('change', {roomName, nickName, imageUrl: u, map: e.target.value, nFloor: 1});
   }
 
   return (
+    <Container fluid>
     <div>
       {clients.length > 0 && clients.map(n => (
         <p>{n.nickname}</p>
@@ -204,6 +209,10 @@ export default function Room(props) {
       <div>
         <TransformWrapper panning={{disabled: true}}>
           <TransformComponent>
+            {/* 
+              Not sure how to resize the canvas without clearing all drawings
+              I just default the size to the size of the image
+            */}
             <canvas style={{
                 border: '1px black solid',
                 backgroundImage: `url(${url})`,
@@ -213,10 +222,11 @@ export default function Room(props) {
               ref={canvasRef}
               onMouseDown={onMouseDown}
               onMouseMove={onMouseMove}
-              onMouseUp={onMouseUp}></canvas>
+              onMouseUp={onMouseUp} />
           </TransformComponent>
         </TransformWrapper>
       </div>
     </div>
+    </Container>
   )
 }

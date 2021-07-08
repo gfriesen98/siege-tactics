@@ -45,4 +45,4 @@ clone or fork this repo, make sure `concurrently` is installed (`npm install --g
 
 `cd client && npm install` for client dependencies
 
-`npm run dev`
+run `npm run dev`
